@@ -1,0 +1,41 @@
+{% extends "event_app/base.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  <form method="get" class="flex gap-2">
+    <input name="q" value="{{ q }}" placeholder="Search name or location" class="border rounded p-2" />
+    <select name="category" class="border rounded p-2">
+      <option value="">All categories</option>
+      {% for cat in categories %}
+        <option value="{{ cat.id }}" {% if request.GET.category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="date_from" class="border rounded p-2" />
+    <input type="date" name="date_to" class="border rounded p-2" />
+    <button class="bg-blue-600 text-white px-4 py-2 rounded">Filter</button>
+  </form>
+  <div>
+    <a href="{% url 'event_app:event_create' %}" class="bg-green-600 text-white px-4 py-2 rounded">+ New Event</a>
+  </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for event in events %}
+  <div class="bg-white p-4 rounded shadow">
+    <div class="flex justify-between">
+      <div>
+        <a href="{% url 'event_app:event_detail' event.pk %}" class="text-lg font-semibold">{{ event.name }}</a>
+        <div class="text-sm text-gray-500">{{ event.date }} • {{ event.time }}</div>
+        <div class="text-sm">{{ event.category.name }}</div>
+      </div>
+      <div class="text-right">
+        <span class="text-sm block">{{ event.num_participants }} participants</span>
+      </div>
+    </div>
+    <p class="mt-2 text-sm text-gray-700">{{ event.location }}</p>
+  </div>
+  {% empty %}
+    <p>No events found.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "event_app/base.html" %}
+{% block content %}
+<div class="max-w-lg mx-auto py-6">
+    <h1 class="text-2xl font-bold mb-4">{{ form.instance.id|yesno:"Edit Participant,Add Participant" }}</h1>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded">
+            Save
+        </button>
+        <a href="{% url 'event_app:participant_list' %}" class="px-4 py-2 bg-gray-400 text-white rounded">
+    Cancel
+</a>
+
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}Event Manager{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <nav class="bg-white shadow p-4">
+    <div class="container mx-auto flex items-center justify-between">
+      <a href="{% url 'event_app:event_list' %}" class="font-bold text-xl">EventMgr</a>
+      <div class="space-x-4">
+        <a href="{% url 'event_app:event_list' %}" class="hover:text-blue-600">Events</a>
+        <a href="{% url 'event_app:category_list' %}" class="hover:text-blue-600">Categories</a>
+        <a href="{% url 'event_app:participant_list' %}" class="hover:text-blue-600">Participants</a>
+        <a href="{% url 'event_app:dashboard' %}" class="hover:text-blue-600">Dashboard</a>
+      </div>
+    </div>
+  </nav>
+  <main class="container mx-auto py-6 px-4">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

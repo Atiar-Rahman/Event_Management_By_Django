@@ -1,0 +1,24 @@
+{% extends "event_app/base.html" %}
+{% block content %}
+<div class="bg-white p-6 rounded shadow max-w-2xl">
+  <h2 class="text-xl font-semibold mb-4">{{ title }}</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="grid gap-3">
+      {% for field in form %}
+        <div>
+          <label class="block text-sm font-medium">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<p class="text-xs text-gray-500">{{ field.help_text }}</p>{% endif %}
+          {% for error in field.errors %}<p class="text-sm text-red-500">{{ error }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="mt-4">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+      <a href="{% url 'event_app:event_list' %}" class="ml-2">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
