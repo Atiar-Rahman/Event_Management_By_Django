@@ -1,41 +1,49 @@
 {% extends "event_app/base.html" %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Organizer Dashboard</h1>
+<h1 class="text-3xl font-bold mb-8 text-gray-900 tracking-tight">Organizer Dashboard</h1>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-  <button class="stat-card p-4 bg-white rounded shadow" data-filter="all" id="stat-total-events">
-    <div class="text-sm text-gray-500">Total Events</div>
-    <div class="text-2xl font-bold">{{ total_events }}</div>
+<!-- Stat Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+  <button class="stat-card p-5 rounded-xl shadow-lg text-white bg-gradient-to-br from-blue-500 to-indigo-700 hover:scale-105 hover:shadow-xl transform transition" data-filter="all" id="stat-total-events">
+    <div class="text-sm opacity-80">Total Events</div>
+    <div class="text-4xl font-extrabold">{{ total_events }}</div>
   </button>
-  <button class="stat-card p-4 bg-white rounded shadow" data-filter="upcoming" id="stat-upcoming">
-    <div class="text-sm text-gray-500">Upcoming Events</div>
-    <div class="text-2xl font-bold">{{ upcoming_events }}</div>
+
+  <button class="stat-card p-5 rounded-xl shadow-lg text-white bg-gradient-to-br from-green-500 to-emerald-700 hover:scale-105 hover:shadow-xl transform transition" data-filter="upcoming" id="stat-upcoming">
+    <div class="text-sm opacity-80">Upcoming Events</div>
+    <div class="text-4xl font-extrabold">{{ upcoming_events }}</div>
   </button>
-  <button class="stat-card p-4 bg-white rounded shadow" data-filter="past" id="stat-past">
-    <div class="text-sm text-gray-500">Past Events</div>
-    <div class="text-2xl font-bold">{{ past_events }}</div>
+
+  <button class="stat-card p-5 rounded-xl shadow-lg text-white bg-gradient-to-br from-pink-500 to-rose-700 hover:scale-105 hover:shadow-xl transform transition" data-filter="past" id="stat-past">
+    <div class="text-sm opacity-80">Past Events</div>
+    <div class="text-4xl font-extrabold">{{ past_events }}</div>
   </button>
-  <div class="p-4 bg-white rounded shadow">
-    <div class="text-sm text-gray-500">Total Participants</div>
-    <div class="text-2xl font-bold">{{ total_participants }}</div>
+
+  <div class="p-5 rounded-xl shadow-lg text-white bg-gradient-to-br from-amber-500 to-orange-700 hover:scale-105 hover:shadow-xl transform transition">
+    <div class="text-sm opacity-80">Total Participants</div>
+    <div class="text-4xl font-extrabold">{{ total_participants }}</div>
   </div>
 </div>
 
+<!-- Today's Events -->
 <div id="dynamic-area">
-  <h2 class="text-xl font-semibold mb-2">Today's Events ({{ todays_events|length }})</h2>
-  <div id="events-list" class="space-y-3">
+  <h2 class="text-2xl font-semibold mb-5 text-gray-900">Today's Events ({{ todays_events|length }})</h2>
+  <div id="events-list" class="space-y-4">
     {% for e in todays_events %}
-      <div class="bg-white p-3 rounded shadow">
-        <div class="flex justify-between">
+      <div class="p-5 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition transform 
+                  {% if e.is_upcoming %}bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500
+                  {% elif e.is_past %}bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500
+                  {% else %}bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500{% endif %}">
+        <div class="flex justify-between items-center">
           <div>
-            <div class="font-semibold">{{ e.name }}</div>
-            <div class="text-sm text-gray-500">{{ e.category.name }} • {{ e.location }}</div>
+            <div class="font-bold text-gray-900">{{ e.name }}</div>
+            <div class="text-sm text-gray-600">{{ e.category.name }} • {{ e.location }}</div>
           </div>
-          <div class="text-sm">{{ e.num_participants }} participants</div>
+          <div class="text-sm font-medium text-indigo-700">{{ e.num_participants }} participants</div>
         </div>
       </div>
     {% empty %}
-      <p>No events for today.</p>
+      <p class="text-gray-500 italic">No events for today.</p>
     {% endfor %}
   </div>
 </div>
@@ -49,15 +57,24 @@ document.querySelectorAll('.stat-card').forEach(btn => {
       .then(data => {
         const list = document.getElementById('events-list');
         list.innerHTML = '';
+        if (data.events.length === 0) {
+          list.innerHTML = '<p class="text-gray-500 italic">No events found for this filter.</p>';
+        }
         data.events.forEach(e => {
+          const cardColor = e.status === 'upcoming'
+            ? 'bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500'
+            : e.status === 'past'
+              ? 'bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500'
+              : 'bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500';
+
           const html = `
-            <div class="bg-white p-3 rounded shadow">
-              <div class="flex justify-between">
+            <div class="p-5 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition transform ${cardColor}">
+              <div class="flex justify-between items-center">
                 <div>
-                  <div class="font-semibold">${e.name}</div>
-                  <div class="text-sm text-gray-500">${e.category} • ${e.location}</div>
+                  <div class="font-bold text-gray-900">${e.name}</div>
+                  <div class="text-sm text-gray-600">${e.category} • ${e.location}</div>
                 </div>
-                <div class="text-sm">${e.num_participants} participants</div>
+                <div class="text-sm font-medium text-indigo-700">${e.num_participants} participants</div>
               </div>
             </div>
           `;

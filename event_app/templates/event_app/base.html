@@ -1,25 +1,51 @@
-<!doctype html>
-<html>
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{% block title %}Event Manager{% endblock %}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Eventify{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50 text-gray-900">
-  <nav class="bg-white shadow p-4">
-    <div class="container mx-auto flex items-center justify-between">
-      <a href="{% url 'event_app:event_list' %}" class="font-bold text-xl">EventMgr</a>
-      <div class="space-x-4">
-        <a href="{% url 'event_app:event_list' %}" class="hover:text-blue-600">Events</a>
-        <a href="{% url 'event_app:category_list' %}" class="hover:text-blue-600">Categories</a>
-        <a href="{% url 'event_app:participant_list' %}" class="hover:text-blue-600">Participants</a>
+<body class="bg-gray-50 text-gray-800">
+
+<!-- Navbar -->
+<nav class="bg-white shadow p-4">
+  <div class="max-w-6xl mx-auto flex items-center justify-between">
+    <a href="{% url 'event_app:event_list' %}" class="font-bold text-xl">Eventify</a>
+
+    <div class="flex items-center gap-4 text-sm">
+      <a href="{% url 'event_app:event_list' %}" class="hover:text-blue-600">Events</a>
+
+      {% if request.user.is_authenticated %}
         <a href="{% url 'event_app:dashboard' %}" class="hover:text-blue-600">Dashboard</a>
-      </div>
+        <a href="{% url 'event_app:participant_dashboard' %}" class="hover:text-blue-600">My RSVPs</a>
+      {% endif %}
+
+      <span class="text-gray-400">|</span>
+
+      {% if request.user.is_authenticated %}
+        <span class="text-gray-700">Hi, {{ request.user.username }}</span>
+        <a href="{% url 'logout' %}" class="rounded px-3 py-1.5 bg-gray-100 hover:bg-gray-200">Logout</a>
+      {% else %}
+        <a href="{% url 'sign-in' %}" class="rounded px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700">Login</a>
+        <a href="{% url 'sign-up' %}" class="rounded px-3 py-1.5 bg-gray-900 text-white hover:bg-black">Sign up</a>
+      {% endif %}
     </div>
-  </nav>
-  <main class="container mx-auto py-6 px-4">
-    {% block content %}{% endblock %}
-  </main>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="max-w-6xl mx-auto p-6">
+    {% block content %}
+    {% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="bg-white border-t mt-8 p-4 text-center text-sm text-gray-500">
+    &copy; {{ now|date:"Y" }} Eventify. All rights reserved.
+</footer>
+
 </body>
 </html>

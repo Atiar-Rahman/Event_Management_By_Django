@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
 
 class Category(models.Model):
     name = models.CharField(max_length=120, unique=True)
@@ -7,12 +9,6 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
-class Participant(models.Model):
-    name = models.CharField(max_length=120)
-    email = models.EmailField()
-
-    def __str__(self):
-        return f"{self.name} <{self.email}>"
 
 class Event(models.Model):
     name = models.CharField(max_length=200)
@@ -21,7 +17,8 @@ class Event(models.Model):
     time = models.TimeField(null=True, blank=True)
     location = models.CharField(max_length=255)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='events')
-    participants = models.ManyToManyField(Participant, blank=True, related_name='events')
+    image = models.ImageField(upload_to='event_images/', default='default_event.jpg')
+    participants = models.ManyToManyField(User, blank=True, related_name='rsvped_events')
 
     class Meta:
         ordering = ['-date', 'time']

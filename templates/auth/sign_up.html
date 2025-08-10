@@ -1,0 +1,18 @@
+{% extends 'event_app/base.html' %}
+{% block title %}Sign up · Eventify{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Create your account</h1>
+<form method="post" class="bg-white border rounded p-6 max-w-md space-y-4">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for field in form %}
+    <div>
+      <label class="text-sm text-gray-700">{{ field.label }}</label>
+      {{ field }}
+      {% for e in field.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}
+    </div>
+  {% endfor %}
+  <button class="px-4 py-2 rounded bg-gray-900 text-white hover:bg-black">Sign up</button>
+  <p class="text-xs text-gray-500 mt-2">We’ll email you an activation link.</p>
+</form>
+{% endblock %}
