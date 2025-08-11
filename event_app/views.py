@@ -5,16 +5,15 @@ from django.db.models import Q, Count
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
-from django.http import JsonResponse  # ← added
+from django.http import JsonResponse
 
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.generic import ListView, DetailView, CreateView, UpdateView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
 from .models import Event, Category
 from .forms import EventForm, CategoryForm, CustomUserCreationForm
 
-# Groups
 GROUP_ADMIN = 'admin'
 GROUP_ORGANIZER = 'organizer'
 GROUP_PARTICIPANT = 'participant'
@@ -38,7 +37,7 @@ class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
             return redirect('no-permission')
         return super().handle_no_permission()
 
-# -------- Signup ----------
+# --- Signup ---
 def signup(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST, request.FILES)
@@ -50,7 +49,7 @@ def signup(request):
         form = CustomUserCreationForm()
     return render(request, 'event_app/signup.html', {'form': form})
 
-# Public
+# --- Public ---
 def home(request):
     events = Event.objects.select_related('category').prefetch_related('participants')[:9]
     return render(request, 'event_app/home.html', {'events': events})
@@ -81,7 +80,7 @@ class EventDetailView(DetailView):
     def get_queryset(self):
         return Event.objects.select_related('category').prefetch_related('participants')
 
-# Event CRUD (Admin/Organizer)
+# --- Event CRUD (Admin/Organizer) ---
 class EventCreateView(RoleRequiredMixin, CreateView):
     allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
     model = Event
@@ -114,94 +113,13 @@ def event_delete(request, id):
         return redirect('event_app:event_list')
     return render(request, 'event_app/event_confirm_delete.html', {'event': event})
 
-# Dashboard (Admin/Organizer)
-@role_required(GROUP_ADMIN, GROUP_ORGANIZER, login_url='login')
-def dashboard(request):
-    today = timezone.now().date()
-    counts = {
-        'events': Event.objects.aggregate(
-            total=Count('id'),
-            upcoming=Count('id', filter=Q(date__gte=today)),
-            past=Count('id', filter=Q(date__lt=today)),
-        ),
-        'categories': Category.objects.aggregate(total=Count('id')),
-        'users': {'total': Event.participants.through.objects.count()}
-    }
-    data = Event.objects.select_related('category').prefetch_related('participants')
-    t = request.GET.get('type','all')
-    data_type = 'events'
-    if t == 'upcoming':
-        data = data.filter(date__gte=today); data_type = 'upcoming_events'
-    elif t == 'past':
-        data = data.filter(date__lt=today); data_type = 'past_events'
-    elif t == 'categories':
-        data = Category.objects.annotate(event_count=Count('events')); data_type = 'categories'
-    return render(request, 'event_app/dashboard.html', {'counts':counts, 'data':data, 'data_type':data_type})
-
-# ---- NEW: Dashboard stats API (Admin/Organizer) ----
-@role_required(GROUP_ADMIN, GROUP_ORGANIZER, login_url='login')
-def dashboard_stats_api(request):
-    """Return JSON for dashboard cards (all/upcoming/past)."""
-    filter_type = request.GET.get('filter', 'all')
-    today = timezone.localdate()
-
-    qs = Event.objects.select_related('category').prefetch_related('participants')
-    if filter_type == 'upcoming':
-        qs = qs.filter(date__gte=today)
-    elif filter_type == 'past':
-        qs = qs.filter(date__lt=today)
-
-    qs = qs.annotate(num_participants=Count('participants')).order_by('date')[:50]
-
-    data = []
-    for e in qs:
-        status = 'upcoming' if e.date >= today else 'past'
-        data.append({
-            'id': e.id,
-            'name': e.name,
-            'date': e.date.isoformat(),
-            'time': e.time.isoformat() if e.time else '',
-            'location': e.location,
-            'category': e.category.name if e.category else '',
-            'num_participants': e.num_participants,
-            'status': status,
-        })
-    return JsonResponse({'events': data})
-
-# RSVP
-@login_required
-def rsvp_event(request, event_id):
-    event = get_object_or_404(Event, id=event_id)
-    if request.user in event.participants.all():
-        messages.warning(request, "You have already RSVP’d to this event.")
-    else:
-        event.participants.add(request.user)
-        messages.success(request, "RSVP successful. A confirmation email has been sent.")
-        send_mail(
-            subject="RSVP Confirmation",
-            message=f"Hi {request.user.username},\n\nYou've successfully RSVP’d for '{event.name}'.",
-            from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
-            recipient_list=[request.user.email] if request.user.email else [],
-            fail_silently=True
-        )
-    return redirect('event_app:event_detail', id=event.id)
-
-@login_required
-def my_rsvped_events(request):
-    return render(request, 'event_app/my_events.html', {'events': request.user.rsvped_events.all()})
-
-@login_required
-def cancel_rsvp(request, event_id):
-    event = get_object_or_404(Event, id=event_id)
-    if request.user in event.participants.all():
-        event.participants.remove(request.user)
-        messages.info(request, "RSVP cancelled.")
-    return redirect('event_app:my_rsvped_events')
-
-# Categories
-def category_list(request):
-    categories = Category.objects.annotate(event_count=Count('events'))
-    return render(request, 'event_app/category_list.html', {'categories': categories})
+# --- Category List (CBV) ---
+class CategoryListView(ListView):
+    model = Category
+    template_name = 'event_app/category_list.html'
+    context_object_name = 'categories'
+    def get_queryset(self):
+        return Category.objects.annotate(event_count=Count('events')).order_by('name')
 
 class CategoryCreateView(RoleRequiredMixin, CreateView):
     allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
@@ -235,6 +153,92 @@ def category_delete(request, id):
         messages.info(request, "Category deleted.")
         return redirect('event_app:category_list')
     return render(request, 'event_app/category_confirm_delete.html', {'category': category})
+
+# --- Dashboard (CBV) ---
+class DashboardView(RoleRequiredMixin, TemplateView):
+    allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
+    template_name = 'event_app/dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        today = timezone.now().date()
+        ctx['counts'] = {
+            'events': Event.objects.aggregate(
+                total=Count('id'),
+                upcoming=Count('id', filter=Q(date__gte=today)),
+                past=Count('id', filter=Q(date__lt=today)),
+            ),
+            'categories': Category.objects.aggregate(total=Count('id')),
+            'users': {'total': Event.participants.through.objects.count()}
+        }
+        t = self.request.GET.get('type','all')
+        data = Event.objects.select_related('category').prefetch_related('participants')
+        data_type = 'events'
+        if t == 'upcoming':
+            data = data.filter(date__gte=today); data_type='upcoming_events'
+        elif t == 'past':
+            data = data.filter(date__lt=today); data_type='past_events'
+        elif t == 'categories':
+            data = Category.objects.annotate(event_count=Count('events')); data_type='categories'
+        ctx['data'] = data
+        ctx['data_type'] = data_type
+        return ctx
+
+class DashboardStatsView(RoleRequiredMixin, View):
+    allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
+    def get(self, request):
+        filter_type = request.GET.get('filter', 'all')
+        today = timezone.localdate()
+        qs = Event.objects.select_related('category').prefetch_related('participants')
+        if filter_type == 'upcoming':
+            qs = qs.filter(date__gte=today)
+        elif filter_type == 'past':
+            qs = qs.filter(date__lt=today)
+        qs = qs.annotate(num_participants=Count('participants')).order_by('date')[:50]
+        data = []
+        for e in qs:
+            status = 'upcoming' if e.date >= today else 'past'
+            data.append({
+                'id': e.id,
+                'name': e.name,
+                'date': e.date.isoformat(),
+                'time': e.time.isoformat() if e.time else '',
+                'location': e.location,
+                'category': e.category.name if e.category else '',
+                'num_participants': e.num_participants,
+                'status': status,
+            })
+        return JsonResponse({'events': data})
+
+# --- RSVP ---
+@login_required
+def rsvp_event(request, event_id):
+    event = get_object_or_404(Event, id=event_id)
+    if request.user in event.participants.all():
+        messages.warning(request, "You have already RSVP’d to this event.")
+    else:
+        event.participants.add(request.user)
+        messages.success(request, "RSVP successful. A confirmation email has been sent.")
+        send_mail(
+            subject="RSVP Confirmation",
+            message=f"Hi {request.user.username},\n\nYou've successfully RSVP’d for '{event.name}'.",
+            from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
+            recipient_list=[request.user.email] if request.user.email else [],
+            fail_silently=True
+        )
+    return redirect('event_app:event_detail', id=event.id)
+
+@login_required
+def my_rsvped_events(request):
+    return render(request, 'event_app/my_events.html', {'events': request.user.rsvped_events.all()})
+
+@login_required
+def cancel_rsvp(request, event_id):
+    event = get_object_or_404(Event, id=event_id)
+    if request.user in event.participants.all():
+        event.participants.remove(request.user)
+        messages.info(request, "RSVP cancelled.")
+    return redirect('event_app:my_rsvped_events')
 
 def no_permission(request):
     return render(request, 'event_app/no_permission.html')

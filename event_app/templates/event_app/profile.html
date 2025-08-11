@@ -1,19 +1,20 @@
-{% extends 'event_app/base.html' %}
+{% extends "event_app/base.html" %}
 {% block title %}My Profile{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">My Profile</h1>
-
-<div class="bg-white p-4 rounded border max-w-xl">
-  {% if user_obj.profile_picture %}
-    <img src="{{ user_obj.profile_picture.url }}" alt="Profile" class="w-24 h-24 rounded-full object-cover mb-3">
-  {% else %}
-    <!-- Fallback (shouldn't hit because of default, but safe anyway) -->
-    <img src="{{ MEDIA_URL }}defaults/profile-placeholder.jpg" class="w-24 h-24 rounded-full object-cover mb-3">
-  {% endif %}
-
-  <div><b>Username:</b> {{ user_obj.username }}</div>
-  <div><b>Name:</b> {{ user_obj.first_name }} {{ user_obj.last_name }}</div>
-  <div><b>Email:</b> {{ user_obj.email }}</div>
-  <div><b>Phone:</b> {{ user_obj.phone_number }}</div>
+<div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+  <h1 class="text-xl font-semibold mb-4">My Profile</h1>
+  <div class="flex gap-4">
+    <img src="{{ user_obj.profile_picture.url }}" alt="Profile" class="w-24 h-24 object-cover rounded-full">
+    <div>
+      <p><strong>Username:</strong> {{ user_obj.username }}</p>
+      <p><strong>Email:</strong> {{ user_obj.email }}</p>
+      <p><strong>Name:</strong> {{ user_obj.first_name }} {{ user_obj.last_name }}</p>
+      <p><strong>Phone:</strong> {{ user_obj.phone_number }}</p>
+    </div>
+  </div>
+  <div class="mt-6 flex gap-3">
+    <a href="{% url 'user:profile_edit' %}" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Edit Profile</a>
+    <a href="{% url 'user:password_change' %}" class="px-4 py-2 rounded bg-gray-800 text-white hover:bg-black">Change Password</a>
+  </div>
 </div>
 {% endblock %}
