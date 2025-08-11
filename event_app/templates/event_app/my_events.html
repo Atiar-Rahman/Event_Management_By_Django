@@ -1,0 +1,48 @@
+{% extends "event_app/base.html" %}
+{% block title %}My RSVPs · Eventify{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6">My RSVP’d Events</h1>
+
+  {% if events %}
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for e in events %}
+        <div class="bg-white rounded shadow p-4 flex flex-col">
+          <div class="mb-3">
+            <img src="{{ e.image.url }}" alt="{{ e.name }}" class="w-full h-40 object-cover rounded">
+          </div>
+          <h2 class="text-lg font-semibold">{{ e.name }}</h2>
+          <p class="text-sm text-gray-500">
+            {{ e.category.name }} • {{ e.location }}
+          </p>
+          <p class="text-sm text-gray-600 mt-1">
+            {{ e.date }}{% if e.time %} • {{ e.time }}{% endif %}
+          </p>
+          <div class="mt-auto flex items-center gap-2 pt-4">
+            <a href="{% url 'event_app:event_detail' e.id %}"
+               class="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">
+              View
+            </a>
+            <form method="post" action="{% url 'event_app:cancel_rsvp' e.id %}">
+              {% csrf_token %}
+              <button type="submit"
+                      class="px-3 py-1.5 text-sm rounded bg-gray-200 hover:bg-gray-300 text-gray-800">
+                Cancel RSVP
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="bg-white rounded shadow p-6 text-center">
+      <p class="text-gray-600">You haven’t RSVP’d to any events yet.</p>
+      <a href="{% url 'event_app:event_list' %}"
+         class="inline-block mt-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+        Browse Events
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

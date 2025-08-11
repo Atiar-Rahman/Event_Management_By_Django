@@ -1,0 +1,19 @@
+{% extends 'event_app/base.html' %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">My Profile</h1>
+
+<div class="bg-white p-4 rounded border max-w-xl">
+  {% if user_obj.profile_picture %}
+    <img src="{{ user_obj.profile_picture.url }}" alt="Profile" class="w-24 h-24 rounded-full object-cover mb-3">
+  {% else %}
+    <!-- Fallback (shouldn't hit because of default, but safe anyway) -->
+    <img src="{{ MEDIA_URL }}defaults/profile-placeholder.jpg" class="w-24 h-24 rounded-full object-cover mb-3">
+  {% endif %}
+
+  <div><b>Username:</b> {{ user_obj.username }}</div>
+  <div><b>Name:</b> {{ user_obj.first_name }} {{ user_obj.last_name }}</div>
+  <div><b>Email:</b> {{ user_obj.email }}</div>
+  <div><b>Phone:</b> {{ user_obj.phone_number }}</div>
+</div>
+{% endblock %}

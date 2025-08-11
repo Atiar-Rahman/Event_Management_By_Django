@@ -3,20 +3,22 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'your-secret-key'  # keep your actual one
+SECRET_KEY = 'django-insecure-your-secret-key'
 DEBUG = True
-ALLOWED_HOSTS = ['*']  # adjust for Render
+ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
+    # Django apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # local apps
-    'event_app.apps.EventAppConfig',
-    'user.apps.UsersConfig',
+
+    # Your apps
+    'user',        # your custom user app (AUTH_USER_MODEL lives here)
+    'event_app',   # <-- use event_app (NOT "events")
 ]
 
 MIDDLEWARE = [
@@ -34,7 +36,7 @@ ROOT_URLCONF = 'event_management.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # if you use a global templates dir
+        'DIRS': [BASE_DIR / 'templates'],   # optional global templates dir
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -57,10 +59,10 @@ DATABASES = {
 }
 
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {'NAME':'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME':'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME':'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 LANGUAGE_CODE = 'en-us'
@@ -68,28 +70,26 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Authentication redirects (dashboards are role-specific; see user/views.py)
-LOGIN_URL = 'sign-in'
-LOGIN_REDIRECT_URL = 'post-login-redirect'   # a view that routes per role
-LOGOUT_REDIRECT_URL = 'sign-in'
+# point to your custom user model in the 'user' app
+AUTH_USER_MODEL = 'user.CustomUser'
 
-# Email & activation
+# auth redirects
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'event_app:event_list'
+LOGOUT_REDIRECT_URL = 'login'
+
+# email (adjust for production)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'your@email.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'app-password')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
-# used by user/signals.py for activation links
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8000')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'no-reply@example.com'
