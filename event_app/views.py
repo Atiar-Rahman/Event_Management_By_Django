@@ -1,3 +1,5 @@
+# event_app/views.py
+
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
@@ -5,213 +7,219 @@ from django.db.models import Q, Count
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.auth.decorators import login_required, permission_required
+from django.views.generic import ListView, DetailView, CreateView, UpdateView
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import JsonResponse
-
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView, View
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views.decorators.http import require_POST
+from django.contrib.auth import get_user_model
 
 from .models import Event, Category
-from .forms import EventForm, CategoryForm, CustomUserCreationForm
+from .forms import EventForm, CategoryForm
 
-GROUP_ADMIN = 'admin'
-GROUP_ORGANIZER = 'organizer'
-GROUP_PARTICIPANT = 'participant'
 
-def _in_groups(user, groups):
-    if not user.is_authenticated:
-        return False
-    if user.is_superuser:
-        return True
-    return user.groups.filter(name__in=groups).exists()
+# -------------------------------
+# No-permission landing page
+# -------------------------------
+def no_permission(request):
+    return render(request, 'event_app/no_permission.html', status=403)
 
-def role_required(*group_names, login_url='login'):
-    return user_passes_test(lambda u: _in_groups(u, group_names), login_url=login_url)
 
-class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    allowed_groups = ()
-    def test_func(self):
-        return _in_groups(self.request.user, self.allowed_groups)
+# -------------------------------
+# Shared permission mixin (RBAC)
+# -------------------------------
+class RBACPermissionRequiredMixin(PermissionRequiredMixin):
+    """
+    If not authenticated -> send to login.
+    If authenticated but missing perms -> send to 'event_app:no_permission'.
+    """
+    login_url = 'login'
+    raise_exception = False
+    redirect_field_name = None
+
     def handle_no_permission(self):
-        if self.request.user.is_authenticated:
-            return redirect('no-permission')
-        return super().handle_no_permission()
+        if not self.request.user.is_authenticated:
+            return redirect(self.get_login_url())
+        return redirect(reverse_lazy('event_app:no_permission'))
 
-# --- Signup ---
-def signup(request):
-    if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Account created successfully. Please log in.")
-            return redirect('login')
-    else:
-        form = CustomUserCreationForm()
-    return render(request, 'event_app/signup.html', {'form': form})
 
-# --- Public ---
+# -------------------------------
+# Home page (latest events)
+# -------------------------------
 def home(request):
-    events = Event.objects.select_related('category').prefetch_related('participants')[:9]
+    events = (
+        Event.objects
+        .select_related('category')
+        .prefetch_related('participants')
+        .all()[:9]
+    )
     return render(request, 'event_app/home.html', {'events': events})
 
+
+# -------------------------------
+# Event list with search/filter
+# -------------------------------
 class EventListView(ListView):
     model = Event
     template_name = 'event_app/event_list.html'
     context_object_name = 'events'
-    def get_queryset(self):
-        qs = Event.objects.select_related('category').prefetch_related('participants')
-        q = self.request.GET.get('search','').strip()
-        if q:
-            qs = qs.filter(Q(name__icontains=q) | Q(location__icontains=q))
-        cat = self.request.GET.get('category')
-        if cat:
-            qs = qs.filter(category_id=cat)
-        d1 = self.request.GET.get('start_date')
-        d2 = self.request.GET.get('end_date')
-        if d1 and d2:
-            qs = qs.filter(date__range=[d1, d2])
-        return qs
 
+    def get_queryset(self):
+        queryset = (
+            Event.objects
+            .select_related('category')
+            .prefetch_related('participants')
+            .all()
+        )
+
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(location__icontains=search_query)
+            )
+
+        category_id = self.request.GET.get('category')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+        if start_date and end_date:
+            queryset = queryset.filter(date__range=[start_date, end_date])
+
+        return queryset
+
+
+# -------------------------------
+# Event detail
+# -------------------------------
 class EventDetailView(DetailView):
     model = Event
     template_name = 'event_app/event_detail.html'
     context_object_name = 'event'
     pk_url_kwarg = 'id'
+
     def get_queryset(self):
-        return Event.objects.select_related('category').prefetch_related('participants')
+        return (
+            Event.objects
+            .select_related('category')
+            .prefetch_related('participants')
+        )
 
-# --- Event CRUD (Admin/Organizer) ---
-class EventCreateView(RoleRequiredMixin, CreateView):
-    allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
+
+# -------------------------------
+# Event create/update/delete (RBAC)
+# -------------------------------
+class EventCreateView(RBACPermissionRequiredMixin, CreateView):
     model = Event
     form_class = EventForm
     template_name = 'event_app/event_form.html'
     success_url = reverse_lazy('event_app:event_list')
-    def form_valid(self, form):
-        form.save()
-        messages.success(self.request, "Event created successfully.")
-        return super().form_valid(form)
+    permission_required = 'event_app.add_event'
 
-class EventUpdateView(RoleRequiredMixin, UpdateView):
-    allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
+
+class EventUpdateView(RBACPermissionRequiredMixin, UpdateView):
     model = Event
     form_class = EventForm
     template_name = 'event_app/event_form.html'
     success_url = reverse_lazy('event_app:event_list')
+    permission_required = 'event_app.change_event'
     pk_url_kwarg = 'id'
-    def form_valid(self, form):
-        form.save()
-        messages.success(self.request, "Event updated successfully.")
-        return super().form_valid(form)
 
-@role_required(GROUP_ADMIN, GROUP_ORGANIZER, login_url='login')
+
+@permission_required('event_app.delete_event', login_url='login')
 def event_delete(request, id):
+    if not request.user.has_perm('event_app.delete_event'):
+        return redirect('event_app:no_permission')
     event = get_object_or_404(Event, id=id)
     if request.method == 'POST':
         event.delete()
-        messages.info(request, "Event deleted.")
         return redirect('event_app:event_list')
     return render(request, 'event_app/event_confirm_delete.html', {'event': event})
 
-# --- Category List (CBV) ---
-class CategoryListView(ListView):
-    model = Category
-    template_name = 'event_app/category_list.html'
-    context_object_name = 'categories'
-    def get_queryset(self):
-        return Category.objects.annotate(event_count=Count('events')).order_by('name')
 
-class CategoryCreateView(RoleRequiredMixin, CreateView):
-    allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
-    model = Category
-    form_class = CategoryForm
-    template_name = 'event_app/category_form.html'
-    success_url = reverse_lazy('event_app:category_list')
-    def form_valid(self, form):
-        form.save()
-        messages.success(self.request, "Category created.")
-        return super().form_valid(form)
+# -------------------------------
+# Dashboard (with total_participants)
+# -------------------------------
+@login_required(login_url='login')
+def dashboard(request):
+    # Only organizers/admins (or anyone with view permission)
+    if not request.user.has_perm('event_app.view_event'):
+        return redirect('event_app:no_permission')
 
-@role_required(GROUP_ADMIN, GROUP_ORGANIZER, login_url='login')
-def category_update(request, id):
-    category = get_object_or_404(Category, id=id)
-    if request.method == 'POST':
-        form = CategoryForm(request.POST, instance=category)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Category updated.")
-            return redirect('event_app:category_list')
-    else:
-        form = CategoryForm(instance=category)
-    return render(request, 'event_app/category_form.html', {'form': form})
+    User = get_user_model()
+    today = timezone.localdate()
 
-@role_required(GROUP_ADMIN, GROUP_ORGANIZER, login_url='login')
-def category_delete(request, id):
-    category = get_object_or_404(Category, id=id)
-    if request.method == 'POST':
-        category.delete()
-        messages.info(request, "Category deleted.")
-        return redirect('event_app:category_list')
-    return render(request, 'event_app/category_confirm_delete.html', {'category': category})
+    total_events = Event.objects.count()
+    upcoming_events = Event.objects.filter(date__gt=today).count()
+    past_events = Event.objects.filter(date__lt=today).count()
 
-# --- Dashboard (CBV) ---
-class DashboardView(RoleRequiredMixin, TemplateView):
-    allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
-    template_name = 'event_app/dashboard.html'
+    # Unique users who RSVP’d to at least one event
+    total_participants = (
+        User.objects.filter(rsvped_events__isnull=False).distinct().count()
+    )
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        today = timezone.now().date()
-        ctx['counts'] = {
-            'events': Event.objects.aggregate(
-                total=Count('id'),
-                upcoming=Count('id', filter=Q(date__gte=today)),
-                past=Count('id', filter=Q(date__lt=today)),
-            ),
-            'categories': Category.objects.aggregate(total=Count('id')),
-            'users': {'total': Event.participants.through.objects.count()}
-        }
-        t = self.request.GET.get('type','all')
-        data = Event.objects.select_related('category').prefetch_related('participants')
-        data_type = 'events'
-        if t == 'upcoming':
-            data = data.filter(date__gte=today); data_type='upcoming_events'
-        elif t == 'past':
-            data = data.filter(date__lt=today); data_type='past_events'
-        elif t == 'categories':
-            data = Category.objects.annotate(event_count=Count('events')); data_type='categories'
-        ctx['data'] = data
-        ctx['data_type'] = data_type
-        return ctx
+    todays_events = (
+        Event.objects
+        .filter(date=today)
+        .select_related('category')
+        .prefetch_related('participants')
+        .annotate(num_participants=Count('participants'))
+    )
 
-class DashboardStatsView(RoleRequiredMixin, View):
-    allowed_groups = (GROUP_ADMIN, GROUP_ORGANIZER)
-    def get(self, request):
-        filter_type = request.GET.get('filter', 'all')
-        today = timezone.localdate()
-        qs = Event.objects.select_related('category').prefetch_related('participants')
-        if filter_type == 'upcoming':
-            qs = qs.filter(date__gte=today)
-        elif filter_type == 'past':
-            qs = qs.filter(date__lt=today)
-        qs = qs.annotate(num_participants=Count('participants')).order_by('date')[:50]
-        data = []
-        for e in qs:
-            status = 'upcoming' if e.date >= today else 'past'
-            data.append({
-                'id': e.id,
-                'name': e.name,
-                'date': e.date.isoformat(),
-                'time': e.time.isoformat() if e.time else '',
-                'location': e.location,
-                'category': e.category.name if e.category else '',
-                'num_participants': e.num_participants,
-                'status': status,
-            })
-        return JsonResponse({'events': data})
+    context = {
+        'total_events': total_events,
+        'upcoming_events': upcoming_events,
+        'past_events': past_events,
+        'total_participants': total_participants,
+        'todays_events': todays_events,
+        'today': today,
+    }
+    return render(request, 'event_app/dashboard.html', context)
 
-# --- RSVP ---
-@login_required
+
+# -------------------------------
+# Dashboard stats JSON API
+# -------------------------------
+@login_required(login_url='login')
+def dashboard_stats_api(request):
+    filter_type = request.GET.get('filter', 'all')
+    today = timezone.localdate()
+
+    qs = (
+        Event.objects
+        .select_related('category')
+        .prefetch_related('participants')
+        .annotate(num_participants=Count('participants'))
+    )
+
+    if filter_type == 'upcoming':
+        qs = qs.filter(date__gte=today)
+    elif filter_type == 'past':
+        qs = qs.filter(date__lt=today)
+
+    data = []
+    for e in qs.order_by('date')[:50]:
+        data.append({
+            'id': e.id,
+            'name': e.name,
+            'date': e.date.isoformat(),
+            'time': e.time.isoformat() if e.time else '',
+            'location': e.location,
+            'category': e.category.name if e.category else '',
+            'num_participants': e.num_participants,
+            'status': 'upcoming' if e.date >= today else 'past',
+        })
+
+    return JsonResponse({'events': data})
+
+
+# -------------------------------
+# RSVP actions (POST-only)
+# -------------------------------
+@login_required(login_url='login')
+@require_POST
 def rsvp_event(request, event_id):
     event = get_object_or_404(Event, id=event_id)
     if request.user in event.participants.all():
@@ -222,33 +230,70 @@ def rsvp_event(request, event_id):
         send_mail(
             subject="RSVP Confirmation",
             message=f"Hi {request.user.username},\n\nYou've successfully RSVP’d for '{event.name}'.",
-            from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
-            recipient_list=[request.user.email] if request.user.email else [],
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[request.user.email],
             fail_silently=True
         )
     return redirect('event_app:event_detail', id=event.id)
 
-@login_required
-def my_rsvped_events(request):
-    return render(request, 'event_app/my_events.html', {'events': request.user.rsvped_events.all()})
 
-@login_required
+@login_required(login_url='login')
+@require_POST
 def cancel_rsvp(request, event_id):
     event = get_object_or_404(Event, id=event_id)
     if request.user in event.participants.all():
         event.participants.remove(request.user)
-        messages.info(request, "RSVP cancelled.")
-    return redirect('event_app:my_rsvped_events')
+        messages.info(request, "Your RSVP has been cancelled.")
+    return redirect('event_app:event_detail', id=event.id)
 
-def no_permission(request):
-    return render(request, 'event_app/no_permission.html')
 
-@login_required
-def dashboard_redirect(request):
-    user = request.user
-    if _in_groups(user, (GROUP_ADMIN,)):
-        return redirect('admin:index')
-    elif _in_groups(user, (GROUP_ORGANIZER,)):
-        return redirect('event_app:dashboard')
+# -------------------------------
+# Category views
+# -------------------------------
+def category_list(request):
+    categories = Category.objects.annotate(event_count=Count('events'))
+    return render(request, 'event_app/category_list.html', {'categories': categories})
+
+
+class CategoryCreateView(RBACPermissionRequiredMixin, CreateView):
+    model = Category
+    form_class = CategoryForm
+    template_name = 'event_app/category_form.html'
+    success_url = reverse_lazy('event_app:category_list')
+    permission_required = 'event_app.add_category'
+
+
+@permission_required('event_app.change_category', login_url='login')
+def category_update(request, id):
+    if not request.user.has_perm('event_app.change_category'):
+        return redirect('event_app:no_permission')
+    category = get_object_or_404(Category, id=id)
+    if request.method == 'POST':
+        form = CategoryForm(request.POST, instance=category)
+        if form.is_valid():
+            form.save()
+            return redirect('event_app:category_list')
     else:
-        return redirect('event_app:my_rsvped_events')
+        form = CategoryForm(instance=category)
+    return render(request, 'event_app/category_form.html', {'form': form})
+
+
+@permission_required('event_app.delete_category', login_url='login')
+def category_delete(request, id):
+    if not request.user.has_perm('event_app.delete_category'):
+        return redirect('event_app:no_permission')
+    category = get_object_or_404(Category, id=id)
+    if request.method == 'POST':
+        category.delete()
+        return redirect('event_app:category_list')
+    return render(request, 'event_app/category_confirm_delete.html', {'category': category})
+
+@login_required(login_url='login')
+def my_rsvped_events(request):
+    events = (
+        request.user.rsvped_events
+        .select_related('category')
+        .annotate(num_participants=Count('participants'))
+        .order_by('date', 'time')
+    )
+    return render(request, 'event_app/my_events.html', {'events': events})

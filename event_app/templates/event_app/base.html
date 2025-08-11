@@ -28,6 +28,7 @@
         {% endif %}
         <a href="{% url 'event_app:my_rsvped_events' %}" class="hover:text-blue-600">My RSVPs</a>
         <a href="{% url 'event_app:dashboard' %}" class="hover:text-blue-600">Dashboard</a>
+        <a href="{% url 'user:profile' %}" class="hover:text-blue-600">Profile</a>
       {% endif %}
 
       <span class="text-gray-300">|</span>
@@ -40,7 +41,8 @@
         </form>
       {% else %}
         <a href="{% url 'login' %}" class="rounded px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700">Login</a>
-        <a href="{% url 'event_app:signup' %}" class="rounded px-3 py-1.5 bg-gray-900 text-white hover:bg-black">Sign up</a>
+        <!-- FIXED: use user:signup instead of event_app:signup -->
+        <a href="{% url 'user:signup' %}" class="rounded px-3 py-1.5 bg-gray-900 text-white hover:bg-black">Sign up</a>
       {% endif %}
     </div>
   </div>

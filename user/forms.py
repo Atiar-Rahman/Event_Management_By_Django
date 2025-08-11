@@ -1,38 +1,61 @@
+# user/forms.py
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm, PasswordChangeForm
-from .models import CustomUser
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 
 class CustomUserCreationForm(UserCreationForm):
-    class Meta:
-        model = CustomUser
-        fields = ('username', 'email', 'first_name', 'last_name', 'phone_number', 'profile_picture')
-        widgets = {
-            'username': forms.TextInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'email': forms.EmailInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'first_name': forms.TextInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'last_name': forms.TextInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'phone_number': forms.TextInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'profile_picture': forms.ClearableFileInput(attrs={'class':'w-full text-sm text-gray-600'}),
-        }
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'phone_number',
+            'profile_picture',
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.widget.attrs.update({
+                "class": "w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            })
+
 
 class CustomUserChangeForm(UserChangeForm):
     class Meta:
-        model = CustomUser
-        fields = ('username', 'email', 'first_name', 'last_name', 'phone_number', 'profile_picture')
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'phone_number',
+            'profile_picture',
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Password field is read-only in UserChangeForm by default; we style visible ones.
+        for name, field in self.fields.items():
+            if name != 'password':
+                field.widget.attrs.update({
+                    "class": "w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                })
+
 
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
-        model = CustomUser
-        fields = ('first_name','last_name','phone_number','profile_picture')
-        widgets = {
-            'first_name': forms.TextInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'last_name': forms.TextInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'phone_number': forms.TextInput(attrs={'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'}),
-            'profile_picture': forms.ClearableFileInput(attrs={'class':'w-full text-sm text-gray-600'}),
-        }
+        model = User
+        fields = ('first_name', 'last_name', 'phone_number', 'profile_picture')
 
-class CustomPasswordChangeForm(PasswordChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for f in self.fields.values():
-            f.widget.attrs.update({'class':'w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500'})
+        for name, field in self.fields.items():
+            field.widget.attrs.update({
+                "class": "w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            })

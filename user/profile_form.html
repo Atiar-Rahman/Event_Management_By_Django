@@ -1,8 +1,9 @@
 {% extends "event_app/base.html" %}
 {% block title %}Edit Profile{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+<div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
   <h1 class="text-xl font-semibold mb-4">Edit Profile</h1>
+
   <form method="post" enctype="multipart/form-data" class="space-y-4">
     {% csrf_token %}
     {% for field in form %}
@@ -13,6 +14,7 @@
       </div>
     {% endfor %}
     <button class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+    <a href="{% url 'user:profile' %}" class="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200">Cancel</a>
   </form>
 </div>
 {% endblock %}

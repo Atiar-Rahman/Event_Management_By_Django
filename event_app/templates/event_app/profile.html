@@ -1,20 +1,23 @@
-{% extends "event_app/base.html" %}
+{% extends "base.html" %}
+
 {% block title %}My Profile{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
-  <h1 class="text-xl font-semibold mb-4">My Profile</h1>
-  <div class="flex gap-4">
-    <img src="{{ user_obj.profile_picture.url }}" alt="Profile" class="w-24 h-24 object-cover rounded-full">
+<div class="max-w-lg mx-auto bg-white p-6 rounded shadow mt-8">
+  <h1 class="text-3xl font-bold mb-6 text-gray-800">My Profile</h1>
+  
+  <div class="flex items-center space-x-6 mb-6">
+    <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="w-32 h-32 rounded-full object-cover border border-gray-300">
     <div>
-      <p><strong>Username:</strong> {{ user_obj.username }}</p>
-      <p><strong>Email:</strong> {{ user_obj.email }}</p>
-      <p><strong>Name:</strong> {{ user_obj.first_name }} {{ user_obj.last_name }}</p>
-      <p><strong>Phone:</strong> {{ user_obj.phone_number }}</p>
+      <p><strong class="text-gray-700">Username:</strong> {{ user.username }}</p>
+      <p><strong class="text-gray-700">Email:</strong> {{ user.email }}</p>
     </div>
   </div>
-  <div class="mt-6 flex gap-3">
-    <a href="{% url 'user:profile_edit' %}" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Edit Profile</a>
-    <a href="{% url 'user:password_change' %}" class="px-4 py-2 rounded bg-gray-800 text-white hover:bg-black">Change Password</a>
+
+  <div class="space-y-3">
+    <p><strong class="text-gray-700">First Name:</strong> {{ user.first_name }}</p>
+    <p><strong class="text-gray-700">Last Name:</strong> {{ user.last_name }}</p>
+    <p><strong class="text-gray-700">Phone Number:</strong> {{ user.phone_number }}</p>
   </div>
 </div>
 {% endblock %}

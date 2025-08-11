@@ -8,7 +8,6 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
-    # Django apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -16,9 +15,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Your apps
-    'user',        # your custom user app (AUTH_USER_MODEL lives here)
-    'event_app',   # <-- use event_app (NOT "events")
+    'event_app',
+    'user',
 ]
 
 MIDDLEWARE = [
@@ -36,14 +34,14 @@ ROOT_URLCONF = 'event_management.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],   # optional global templates dir
-        'APP_DIRS': True,
+        'DIRS': [BASE_DIR / 'templates'],  # optional project-level dir
+        'APP_DIRS': True,                  # important for app/templates discovery
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.request',   # admin sidebar + many templates
+                'django.contrib.auth.context_processors.auth',  # required by admin/auth
+                'django.contrib.messages.context_processors.messages',  # messages framework
             ],
         },
     },
@@ -72,20 +70,21 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# point to your custom user model in the 'user' app
+# Custom user model
 AUTH_USER_MODEL = 'user.CustomUser'
 
-# auth redirects
+# Auth redirects
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'event_app:event_list'
-LOGOUT_REDIRECT_URL = 'login'
+LOGOUT_REDIRECT_URL = 'event_app:event_list'
 
-# email (adjust for production)
+# Email (console for dev)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))

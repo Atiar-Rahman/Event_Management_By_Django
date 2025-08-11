@@ -1,0 +1,19 @@
+{% extends "event_app/base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+  <h1 class="text-xl font-semibold mb-6">My Profile</h1>
+  <div class="flex gap-6 items-center">
+    <img src="{{ request.user.profile_picture.url }}" alt="Profile" class="w-28 h-28 rounded-full object-cover border">
+    <div>
+      <div class="text-sm text-gray-500">Username</div><div class="font-medium">{{ request.user.username }}</div>
+      <div class="text-sm text-gray-500">Email</div><div class="font-medium">{{ request.user.email }}</div>
+      <div class="text-sm text-gray-500">Phone</div><div class="font-medium">{{ request.user.phone_number }}</div>
+    </div>
+  </div>
+  <div class="mt-6 flex gap-3">
+    <a href="{% url "user:profile_edit" %}" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Edit Profile</a>
+    <a href="{% url "user:password_change" %}" class="px-4 py-2 rounded bg-gray-800 text-white hover:bg-black">Change Password</a>
+  </div>
+</div>
+{% endblock %}
